@@ -15,7 +15,8 @@
 package tspeaklibtest;
 
 /**
- *
+ * This is just meant to be a test app - connect to the server and launch a thread to send the keep alive pings
+ *  It can receive audio 
  * @author markf
  */
 

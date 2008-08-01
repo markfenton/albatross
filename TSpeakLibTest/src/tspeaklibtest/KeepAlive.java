@@ -37,7 +37,7 @@ ClientConnection theConnection;
 	
 	try
 	{
-	    this.sleep(2000L);
+	    this.sleep(5000L);
 	}
 	 catch (Exception e) 
         {

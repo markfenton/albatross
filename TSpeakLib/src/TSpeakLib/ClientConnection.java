@@ -3,6 +3,8 @@
  * 
  * Copyright (C) 2008 Mark Fenton
  * 
+ * This is based on the code of the TeamBlibbityBlabbity project (http://sourceforge.net/projects/teambb/)
+ * 
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -15,7 +17,7 @@
 package TSpeakLib;
 
 /**
- *
+ * 
  * @author markf
  */
 
@@ -39,6 +41,7 @@ public class ClientConnection {
     Long lastServerData = -1L; //last time server sent us data
     Long lastPing = -1L; //last we pinged the server
     int pingCount = 0x00;
+    int voiceSendCount = 0;
     
     //types of server packet we can recieve:
     public enum serverPacketType {GENERIC_ERROR,UNKNOWN_PACKET,UNHANDLED_PACKET,CONNECTION_REPLY_1,OTHER_KNOWN,
@@ -81,6 +84,7 @@ public class ClientConnection {
     {
 	try
 	{
+	    //this is all the output block
 	    final int OUTPUT_SAMPLE_RATE = 16000; //speex says this should be 8000 but that runs at 50% speed (no idea why). This works so we keep it.
 	    targetFormat = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, OUTPUT_SAMPLE_RATE, 16, 1,2, OUTPUT_SAMPLE_RATE,false);
 
@@ -105,7 +109,17 @@ public class ClientConnection {
 	}
 	catch (Exception e) 
         {
-            System.err.println(e);
+            System.err.println("Error initialising audio output: " + e);
+        }
+	
+	try
+	{
+	    //this is all the input block
+	   
+	}
+	catch (Exception e) 
+        {
+            System.err.println("Error initialising audio input: " + e);
         }
     }
     
@@ -706,13 +720,43 @@ public class ClientConnection {
         }
         catch (Exception e) 
         {
-           System.err.println(e);   
+           System.err.println("Error decoding audio packet: " + e);   
 	   e.printStackTrace();
            return;
         }
 
       
 
+    }
+    
+    //obviously data is the audio, and it needs to be encoded (correctly for the current channel)
+    public void sendAudioPacket(byte[] data)
+    {
+	try
+	{
+	    byte header[] = hexStringToByteArray("f2be0009");
+	    byte header2[] = hexStringToByteArray("00000000");
+	    byte tail[] = hexStringToByteArray("0000000001");
+	    byte[] pBuffer;
+	    byte[] crc = hexStringToByteArray("00000000");
+	    byte[] midsection = hexStringToByteArray("001005");
+
+
+	    //nb nasty hack using intToByte2Array (special version!) as the voiceSendCount needs to be 2 bytes)
+	    byte[][] messageBuffer = {header,serverChunkB, intToByte2Array(voiceSendCount),midsection,data};
+	    pBuffer = byteArrayConcat(messageBuffer);
+
+	    /* Oddly the TBB code doesn't use tail, head2 or crc after defining them all */
+
+	     DatagramPacket packet = new DatagramPacket(pBuffer, pBuffer.length,address,port);
+	     UDPSocket.send(packet);
+
+	     voiceSendCount++;
+	}
+	catch(Exception e)
+	{
+	    System.err.println("Error sending voice: " + e);
+	}
     }
         
     public void disconnect()
@@ -721,6 +765,7 @@ public class ClientConnection {
     }
     
     /*UTILITY FUNCTIONS*/
+    /* These are all private as they will be played with lots knowing me*/ 
     
     private static byte[] hexStringToByteArray(String hex)
     {        
@@ -822,6 +867,16 @@ public class ClientConnection {
         
         return buf;
     }
+    
+    //this is lazy of me but I don't want to write a proper one!
+    private static byte[] intToByte2Array(int x)
+    {
+        byte[] buf = new byte[2];
+        buf[1]=(byte)((x & 0x0000ff00)>>>8);
+        buf[0]=(byte)((x & 0x000000ff));
+        
+        return buf;
+    }
     /**
      * Convert the byte array to an int starting from the given offset.
      *
@@ -838,6 +893,7 @@ public class ClientConnection {
         return value;
     }
 
+    /* GET/SETS */
     
     public Long  getLastServerData()
     {
