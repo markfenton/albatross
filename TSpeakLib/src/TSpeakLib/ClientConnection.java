@@ -32,6 +32,11 @@ public class ClientConnection {
     DatagramSocket UDPSocket;
     InetAddress address;
     Integer port;
+    
+    //userdata
+    String globalPassword = "";
+    String globalUsername = "";
+    String globalAlias = "";
         
     //nasty bits for the protocol
     byte[] serverChunkB = {(byte)0x00};
@@ -40,7 +45,7 @@ public class ClientConnection {
     
     Long lastServerData = -1L; //last time server sent us data
     Long lastPing = -1L; //last we pinged the server
-    int pingCount = 0x00;
+    int pingCount = 0;
     int voiceSendCount = 0;
     
     //types of server packet we can recieve:
@@ -58,19 +63,21 @@ public class ClientConnection {
     SourceDataLine line;
     AudioFormat targetFormat;  
     
-    
-     SpeexDecoder speexDecoder;
-    
-    
-    
-    
-    public ClientConnection(String serverAddress, int port)
+    SpeexDecoder speexDecoder;
+        
+    public ClientConnection(String serverAddress, int port, String username, String password, String alias)
     {
         try 
         {
             this.UDPSocket = new DatagramSocket();
             this.address = InetAddress.getByName(serverAddress);
             this.port = port;   
+
+	    //for registered, pass username and password. for password only, just the password. Alias is optional (depends on server settings)
+	    
+	    this.globalUsername = username;
+	    this.globalPassword = password;
+	    this.globalAlias = alias;
 	  
 	    initialiseAudio();
         }
@@ -125,7 +132,7 @@ public class ClientConnection {
     
     public boolean connect()
     {
-	 sendConnectionPacket1("test","lionftw","Albatross");
+	 sendConnectionPacket1(globalUsername,globalPassword,globalAlias);
 	 receiveServerPacket(); //receive reply and send packet 2
 	 receiveServerPacket(); //recevie reply to 2. should now be connected
 	 return connected;
@@ -680,6 +687,7 @@ public class ClientConnection {
     private void handleSpeexPacket(byte[] message, serverPacketType packetType)
     {  
 	decodeSpeexAudioPacket(message);
+	System.out.println("sound!");
 	return;
     }
     
@@ -734,12 +742,12 @@ public class ClientConnection {
     {
 	try
 	{
-	    byte header[] = hexStringToByteArray("f2be0009");
+	    byte header[] = hexStringToByteArray("f2be000c"); //LibTBB uses 09 as last byte, TS uses 0c
 	    byte header2[] = hexStringToByteArray("00000000");
 	    byte tail[] = hexStringToByteArray("0000000001");
 	    byte[] pBuffer;
 	    byte[] crc = hexStringToByteArray("00000000");
-	    byte[] midsection = hexStringToByteArray("001005");
+	    byte[] midsection = hexStringToByteArray("260005"); //LibTBB uses 001005, TS uses 260005
 
 
 	    //nb nasty hack using intToByte2Array (special version!) as the voiceSendCount needs to be 2 bytes)

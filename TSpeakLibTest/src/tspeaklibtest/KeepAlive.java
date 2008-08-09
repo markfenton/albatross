@@ -20,7 +20,8 @@ package tspeaklibtest;
  */
 
 import TSpeakLib.*;
-
+import java.util.*;
+ 
 public class KeepAlive extends Thread {
 
 ClientConnection theConnection;
@@ -37,7 +38,7 @@ ClientConnection theConnection;
 	
 	try
 	{
-	    this.sleep(5000L);
+	    this.sleep(1500L);
 	}
 	 catch (Exception e) 
         {
@@ -47,12 +48,22 @@ ClientConnection theConnection;
 	while (true)
 	{
 	    
-	    if(System.currentTimeMillis() - lastPing > 4000)
+	    if(System.currentTimeMillis() - lastPing > 500)
 	    {
-		System.out.println("Ping...");
-		theConnection.pingServer();
+	//	System.out.println("Ping...");
+	//	theConnection.pingServer();
 		lastPing =System.currentTimeMillis();
 	    }
+	    
+	    Random generator = new Random();
+	    
+	    byte[] data = new byte[160];
+	    
+	    generator.nextBytes(data);
+	    
+	    System.out.println("blah");
+	    
+	    theConnection.sendAudioPacket(data);
 	}
     }
     

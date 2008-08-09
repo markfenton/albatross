@@ -39,7 +39,7 @@ public class Main {
     
     static void connectionTest()
     {
-        a_connection = new ClientConnection("ts.deadcodeelimination.com",8767);
+        a_connection = new ClientConnection("ts.deadcodeelimination.com",8767,"","lionftw","Albatross");
         
        if(!a_connection.connect())//should really timeout this
        {
