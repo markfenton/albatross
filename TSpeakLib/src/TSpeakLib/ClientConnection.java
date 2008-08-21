@@ -29,6 +29,12 @@ import javax.sound.sampled.*;
 
 public class ClientConnection {
     
+    /**	Flag for debugging messages.
+    *	If true, some messages are dumped to the console
+    *	during operation.	
+    */
+    private static boolean DEBUG = true;
+    
     DatagramSocket UDPSocket;
     InetAddress address;
     Integer port;
@@ -37,7 +43,9 @@ public class ClientConnection {
     String globalPassword = "";
     String globalUsername = "";
     String globalAlias = "";
-        
+
+    String channelName = "Arena 1";
+    
     //nasty bits for the protocol
     byte[] serverChunkB = {(byte)0x00};
     Integer cmdCounter = 1;
@@ -61,10 +69,14 @@ public class ClientConnection {
     boolean connected = false;
     
     SourceDataLine line;
+    public TargetDataLine lineIn; //only public for testing!
     AudioFormat targetFormat;  
+    AudioFormat sourceFormat;  
     
     SpeexDecoder speexDecoder;
-        
+    SpeexEncoder speexEncoder;
+    final int OUTPUT_SAMPLE_RATE = 16000; //speex says this should be 8000 but that runs at 50% speed (no idea why). This works so we keep it.
+    
     public ClientConnection(String serverAddress, int port, String username, String password, String alias)
     {
         try 
@@ -92,7 +104,6 @@ public class ClientConnection {
 	try
 	{
 	    //this is all the output block
-	    final int OUTPUT_SAMPLE_RATE = 16000; //speex says this should be 8000 but that runs at 50% speed (no idea why). This works so we keep it.
 	    targetFormat = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, OUTPUT_SAMPLE_RATE, 16, 1,2, OUTPUT_SAMPLE_RATE,false);
 
 	    SourceDataLine.Info info = new DataLine.Info(SourceDataLine.class,targetFormat); // format is an AudioFormat object
@@ -121,7 +132,75 @@ public class ClientConnection {
 	
 	try
 	{
+	    
+	    
+	    //list all system mixers
+	    System.out.println("System Mixers Available: ");
+	    Mixer.Info[]	aInfos = AudioSystem.getMixerInfo();
+	    for (int i = 0; i < aInfos.length; i++)
+	    {
+		if(DEBUG)
+		{
+		    
+		    System.out.println(aInfos[i].getName() + aInfos[i].getDescription());
+		}
+		
+	    }
+	    
+	    //now get all the mixers
+	    Mixer[] aMixer = new Mixer[aInfos.length];
+	    for (int i = 0; i < aInfos.length; i++)
+	    {
+		    aMixer[i] = AudioSystem.getMixer(aInfos[i]);
+	    }
+
+	    
+	    
 	    //this is all the input block
+	    sourceFormat = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, 44100.0F, 16, 1,2, 44100.0F,false);
+
+	    
+	    int mixerIndex = 4;
+	    Mixer.Info ourMixerInfo = aInfos[mixerIndex]; //this is the mixer we will actually use. Is hardcoded to 2 for my test system at present.
+	    Mixer ourMixer = aMixer[mixerIndex];
+	    
+	    //list all mixer lines
+	    Line.Info[] lineInfos = ourMixer.getTargetLineInfo();
+	    for (int i = 0; i < lineInfos.length; i++)
+	    {
+		if(DEBUG)
+		{
+		    System.out.println(lineInfos[i]);
+		}
+	    }
+	    
+	    //now need a line from this
+	    Line.Info lineInfo = lineInfos[0]; //this is the mixer line we will use for input. more nasty hardcoding so we use the first one.
+	    
+	    //now get the line.
+	    
+	    
+	    if (!AudioSystem.isLineSupported(lineInfo)) {
+		System.err.println("Audio input type not supported.");
+	    }
+
+	    lineIn = (TargetDataLine) AudioSystem.getLine(lineInfo);
+	   
+	    if(DEBUG){System.out.println("Input line used:" + lineIn);}
+
+	    lineIn.open(sourceFormat);
+	    lineIn.start();
+	    
+	    //encoder
+	    speexEncoder = new SpeexEncoder();
+	    /*
+	     * speexEncoder.init(mode,       //   mode - (0=NB, 1=WB, 2=UWB)
+	     *		      quality, //encoding quality (0-9?)
+			      sampleRate, //the number of samples per second.
+			      channels,   //(1=mono, 2=stereo, ...)
+			      );
+	     * */
+	    speexEncoder.init(1,7,OUTPUT_SAMPLE_RATE,1);
 	   
 	}
 	catch (Exception e) 
@@ -314,7 +393,7 @@ public class ClientConnection {
             {
                 case CONNECTION_REPLY_1:
                     //this shouuld have gone ok if we get this so send next packet
-                    sendConnectionPacket2("","","");
+                    sendConnectionPacket2(channelName,"","");
                     //return here as we don't want to do a normal ack
                     return;
                     //break; //not needed cos of return
@@ -330,7 +409,7 @@ public class ClientConnection {
 		    break;
                 case UNHANDLED_PACKET:
                     //this means we don't handle the type yet
-                    System.err.println("Known but unhandled packet from server! Type header was: " + globalErrorBuffer);
+                    if(DEBUG){System.out.println("Known but unhandled packet from server! Type header was: " + globalErrorBuffer);}
                     break;
                 //AUDIO TYPES!
                 case VOICE_DATA_SPEEX_3_4:
@@ -346,7 +425,7 @@ public class ClientConnection {
                 case UNKNOWN_PACKET: 
                 default:
                     //this means we don't know the type - uhoh.
-                    System.err.println("Unknown packet type from server! Type header was: " + globalErrorBuffer);
+                    if(DEBUG){System.out.println("Unknown packet type from server! Type header was: " + globalErrorBuffer);}
                     break;
             }
             
@@ -728,13 +807,44 @@ public class ClientConnection {
         }
         catch (Exception e) 
         {
-           System.err.println("Error decoding audio packet: " + e);   
+           System.err.println("Error decoding speex audio packet: " + e);   
 	   e.printStackTrace();
            return;
         }
+    }
+    
+    /* Since we send 160 bytes (4 speex frames?) It would be a good idea to pass that much wav data ;)
+     * Easiest thing is to encode all the data we're given and let the caller split it methinks
+     */
+    public void encodeSpeexAudioPacket(byte[] audio, byte[] speexData)
+    {    
+        try
+        {    	    
+	    int frame_size = 160;
+	    
+	    
+	    
+	    byte[] encoded = new byte[frame_size];
+	    
+	    speexEncoder.processData(audio, 0, audio.length);
+//	    
+//            for (int i = 0; i < 4; i++)
+//            {
+//		speexDecoder.processData(false);
+//		//speexDecoder.processData(audioData, i*frame_size, frame_size);
+//            }
+	    int dataSize = speexEncoder.getProcessedDataByteSize();
+	    speexData = new byte[dataSize];	
+	    speexDecoder.getProcessedData(speexData, 0);
 
-      
-
+	    return;            
+        }
+        catch (Exception e) 
+        {
+           System.err.println("Error encoding Speex audio data: " + e);   
+	   e.printStackTrace();
+           return;
+        }
     }
     
     //obviously data is the audio, and it needs to be encoded (correctly for the current channel)

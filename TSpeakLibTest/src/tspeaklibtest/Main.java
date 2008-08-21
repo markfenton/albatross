@@ -26,6 +26,13 @@ public class Main {
 
     static ClientConnection a_connection;
     
+    /**	Flag for debugging messages.
+    *	If true, some messages are dumped to the console
+    *	during operation.	
+    */
+    private static boolean DEBUG = true;
+
+    
     
     /**
      * @param args the command line arguments

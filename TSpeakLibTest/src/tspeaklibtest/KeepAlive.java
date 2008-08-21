@@ -25,6 +25,12 @@ import java.util.*;
 public class KeepAlive extends Thread {
 
 ClientConnection theConnection;
+
+/**	Flag for debugging messages.
+    *	If true, some messages are dumped to the console
+    *	during operation.	
+    */
+    private static boolean DEBUG = true;
     
     public KeepAlive(ClientConnection aConnection)
     {
@@ -55,15 +61,33 @@ ClientConnection theConnection;
 		lastPing =System.currentTimeMillis();
 	    }
 	    
-	    Random generator = new Random();
+	  // Random generator = new Random();
 	    
-	    byte[] data = new byte[160];
+	    byte[] data = new byte[640];
 	    
-	    generator.nextBytes(data);
+	   // generator.nextBytes(data);
 	    
-	    System.out.println("blah");
+	    theConnection.lineIn.read(data, 0, 640);
 	    
-	    theConnection.sendAudioPacket(data);
+	    byte encData[] = new byte[160];
+	    
+	    theConnection.encodeSpeexAudioPacket(data,encData);
+	    
+	    theConnection.sendAudioPacket(encData);
+	    
+	    if(DEBUG)
+	    {
+		System.out.println("Sending Audio Packet...");
+	    }
+	    
+	    try
+	    {
+		//this.sleep(100L);
+	    }
+	     catch (Exception e) 
+	    {
+	       System.err.println(e);
+	    }
 	}
     }
     
