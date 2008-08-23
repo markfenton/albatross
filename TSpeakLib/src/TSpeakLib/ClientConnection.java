@@ -62,12 +62,25 @@ public class ClientConnection {
                                     //and now the audio data types
 				    //speex first
                                     VOICE_DATA_SPEEX_3_4,VOICE_DATA_SPEEX_5_2,VOICE_DATA_SPEEX_7_2,VOICE_DATA_SPEEX_9_3,
-                                    VOICE_DATA_SPEEX_12_3,VOICE_DATA_SPEEX_16_3,VOICE_DATA_SPEEX_19_5,VOICE_DATA_SPEEX_25_9};
+                                    VOICE_DATA_SPEEX_12_3,VOICE_DATA_SPEEX_16_3,VOICE_DATA_SPEEX_19_5,VOICE_DATA_SPEEX_25_9,
+				    //text messages
+				    TEXT_MESSAGE,CHAT_MESSAGE};
 				    
     //store last error here
     String globalErrorBuffer = new String();
     boolean connected = false;
+
+    //text messages
+    class textMessage 
+    {
+	byte[] msg = new byte[2000];
+	byte[] senderName = new byte[256];
+	int isMore;
+    }
     
+    textMessage currentMessage = null;
+    
+    //audio crap
     SourceDataLine line;
     public TargetDataLine lineIn; //only public for testing!
     AudioFormat targetFormat;  
@@ -132,10 +145,9 @@ public class ClientConnection {
 	
 	try
 	{
-	    
-	    
+	    //Audio input time!
 	    //list all system mixers
-	    System.out.println("System Mixers Available: ");
+	    if(DEBUG){System.out.println("System Mixers Available: ");}
 	    Mixer.Info[]	aInfos = AudioSystem.getMixerInfo();
 	    for (int i = 0; i < aInfos.length; i++)
 	    {
@@ -157,14 +169,15 @@ public class ClientConnection {
 	    
 	    
 	    //this is all the input block
-	    sourceFormat = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, 44100.0F, 16, 1,2, 44100.0F,false);
+	    sourceFormat = new AudioFormat(44100.0F, 16, 1,true,false);
 
 	    
-	    int mixerIndex = 4;
-	    Mixer.Info ourMixerInfo = aInfos[mixerIndex]; //this is the mixer we will actually use. Is hardcoded to 2 for my test system at present.
+	    int mixerIndex = 2;
+	    Mixer.Info ourMixerInfo = aInfos[mixerIndex]; //this is the mixer we will actually use. Is hardcoded for my test system at present.
 	    Mixer ourMixer = aMixer[mixerIndex];
 	    
 	    //list all mixer lines
+	    if(DEBUG){System.out.println("Mixer Lines Available: ");}
 	    Line.Info[] lineInfos = ourMixer.getTargetLineInfo();
 	    for (int i = 0; i < lineInfos.length; i++)
 	    {
@@ -175,16 +188,19 @@ public class ClientConnection {
 	    }
 	    
 	    //now need a line from this
-	    Line.Info lineInfo = lineInfos[0]; //this is the mixer line we will use for input. more nasty hardcoding so we use the first one.
+	    //Line.Info lineInfo = lineInfos[0]; //this is the mixer line we will use for input. more nasty hardcoding so we use the first one.
+	    DataLine.Info lineInfo = new DataLine.Info(TargetDataLine.class,sourceFormat); //this is a test bodge as we don't know what we will get...
 	    
-	    //now get the line.
 	    
-	    
-	    if (!AudioSystem.isLineSupported(lineInfo)) {
+	    //now test and get the line.
+	    if (!ourMixer.isLineSupported(lineInfo)) {
 		System.err.println("Audio input type not supported.");
 	    }
 
-	    lineIn = (TargetDataLine) AudioSystem.getLine(lineInfo);
+	    
+
+	    
+	    lineIn = (TargetDataLine) ourMixer.getLine(lineInfo);
 	   
 	    if(DEBUG){System.out.println("Input line used:" + lineIn);}
 
@@ -474,13 +490,13 @@ public class ClientConnection {
 			break;
 		
 		case 0x0082bef0:	// text message
-			if(message[0x1c]==0x02)
+			if(message[0x1c]==0x02) //text/chat flag
 			{
 //				libtbb_client_decode_textmessage(theTBBClient);
 //				libtbb_client_doack(theTBBClient, &acknum);
 //				if(theTBBClient->currentmsg.ismore==0)
 //					return TBBCLIENT_TEXT_MESSAGE;
-				packetType = serverPacketType.OTHER_KNOWN;
+				packetType = serverPacketType.TEXT_MESSAGE;
 			}
 			else
 			{
@@ -488,7 +504,7 @@ public class ClientConnection {
 //				libtbb_client_doack(theTBBClient, &acknum);
 //				if(theTBBClient->currentmsg.ismore==0)
 //					return TBBCLIENT_CHAT_MESSAGE;
-				packetType = serverPacketType.OTHER_KNOWN;
+				packetType = serverPacketType.CHAT_MESSAGE;
 			}
 			break;
 		case 0x0007bef0:

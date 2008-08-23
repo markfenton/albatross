@@ -61,19 +61,19 @@ ClientConnection theConnection;
 		lastPing =System.currentTimeMillis();
 	    }
 	    
-	  // Random generator = new Random();
+	   
 	    
 	    byte[] data = new byte[640];
+	   //Random generator = new Random();
+	   //generator.nextBytes(data);
 	    
-	   // generator.nextBytes(data);
-	    
-	    theConnection.lineIn.read(data, 0, 640);
+	   theConnection.lineIn.read(data, 0, 640);
 	    
 	    byte encData[] = new byte[160];
 	    
 	    theConnection.encodeSpeexAudioPacket(data,encData);
 	    
-	    theConnection.sendAudioPacket(encData);
+	    //theConnection.sendAudioPacket(encData);
 	    
 	    if(DEBUG)
 	    {
