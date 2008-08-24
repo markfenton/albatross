@@ -73,12 +73,12 @@ public class ClientConnection {
     //text messages
     class textMessage 
     {
-	byte[] msg = new byte[2000];
-	byte[] senderName = new byte[256];
-	int isMore;
+	String msg;
+	String senderName;
+	boolean isMore = false; //default to false - complicated why! First packet assumed to be start of long message, so this is set to true as soon as we start handling, but first packet will not be the continuation. Or something.
     }
     
-    textMessage currentMessage = null;
+    textMessage currentMessage = new textMessage();
     
     //audio crap
     SourceDataLine line;
@@ -496,6 +496,7 @@ public class ClientConnection {
 //				libtbb_client_doack(theTBBClient, &acknum);
 //				if(theTBBClient->currentmsg.ismore==0)
 //					return TBBCLIENT_TEXT_MESSAGE;
+				receiveTextMessage(packet);
 				packetType = serverPacketType.TEXT_MESSAGE;
 			}
 			else
@@ -504,6 +505,7 @@ public class ClientConnection {
 //				libtbb_client_doack(theTBBClient, &acknum);
 //				if(theTBBClient->currentmsg.ismore==0)
 //					return TBBCLIENT_CHAT_MESSAGE;
+				receiveTextMessage(packet);
 				packetType = serverPacketType.CHAT_MESSAGE;
 			}
 			break;
@@ -736,10 +738,39 @@ public class ClientConnection {
             
     }
     
-    private String receiveTextMessage()
+    private void receiveTextMessage(DatagramPacket packet)
     {
+	
+	if(DEBUG){System.out.println("Receving text message:");}
+	
+	if (currentMessage.isMore == true)
+	{
+	    //this is a followup, so only need to do the simple version
+	    receiveBigTextMessage(packet);
+	}
+	
+	//now say there is more to come until we find the 0x00 end-of-message indicator
+	currentMessage.isMore = true;
+	
+	//get the data
+	byte[] data = packet.getData();
+	
+	//see if this is message has more parts to come or find end of message position 
+	//(though this should surely be at the end?)
+	//ignored for now :D
+	
+	//populate our pretty message structure
+	currentMessage = new textMessage();
+	
+	currentMessage.msg = "";
+	currentMessage.senderName = "";
+		
+        if(DEBUG){System.out.println(currentMessage.msg);}
+    }
     
-        return "Not yet!";
+    private void receiveBigTextMessage(DatagramPacket packet)
+    {
+	if(DEBUG){System.out.println("Continuation text message packet.");}
     }
     
     public void sendChatMessage(String msg, int id)
