@@ -64,7 +64,7 @@ public class ClientConnection {
                                     VOICE_DATA_SPEEX_3_4,VOICE_DATA_SPEEX_5_2,VOICE_DATA_SPEEX_7_2,VOICE_DATA_SPEEX_9_3,
                                     VOICE_DATA_SPEEX_12_3,VOICE_DATA_SPEEX_16_3,VOICE_DATA_SPEEX_19_5,VOICE_DATA_SPEEX_25_9,
 				    //text messages
-				    TEXT_MESSAGE,CHAT_MESSAGE};
+				    INCOMPLETE_MESSAGE,TEXT_MESSAGE,CHAT_MESSAGE};
 				    
     //store last error here
     String globalErrorBuffer = new String();
@@ -73,8 +73,8 @@ public class ClientConnection {
     //text messages
     class textMessage 
     {
-	String msg;
-	String senderName;
+	String msg = "";
+	String senderName = "";
 	boolean isMore = false; //default to false - complicated why! First packet assumed to be start of long message, so this is set to true as soon as we start handling, but first packet will not be the continuation. Or something.
     }
     
@@ -438,6 +438,14 @@ public class ClientConnection {
 		case VOICE_DATA_SPEEX_25_9:
                     handleSpeexPacket(message,packetType);
                     break;
+		case TEXT_MESSAGE:
+		case CHAT_MESSAGE:
+		    //need to notify the app that there is a new message
+		    if(DEBUG){System.out.println(currentMessage.senderName + ": " + currentMessage.msg);}
+		    break;
+		case INCOMPLETE_MESSAGE:
+		    //don't want return incomplete messages
+		    break;
                 case UNKNOWN_PACKET: 
                 default:
                     //this means we don't know the type - uhoh.
@@ -496,8 +504,7 @@ public class ClientConnection {
 //				libtbb_client_doack(theTBBClient, &acknum);
 //				if(theTBBClient->currentmsg.ismore==0)
 //					return TBBCLIENT_TEXT_MESSAGE;
-				receiveTextMessage(packet);
-				packetType = serverPacketType.TEXT_MESSAGE;
+				packetType = receiveTextMessage(packet);
 			}
 			else
 			{
@@ -505,8 +512,7 @@ public class ClientConnection {
 //				libtbb_client_doack(theTBBClient, &acknum);
 //				if(theTBBClient->currentmsg.ismore==0)
 //					return TBBCLIENT_CHAT_MESSAGE;
-				receiveTextMessage(packet);
-				packetType = serverPacketType.CHAT_MESSAGE;
+				packetType = receiveTextMessage(packet); //we treat chat messages as text messages for now
 			}
 			break;
 		case 0x0007bef0:
@@ -738,15 +744,17 @@ public class ClientConnection {
             
     }
     
-    private void receiveTextMessage(DatagramPacket packet)
-    {
-	
-	if(DEBUG){System.out.println("Receving text message:");}
-	
+    private serverPacketType receiveTextMessage(DatagramPacket packet)
+    {	
 	if (currentMessage.isMore == true)
 	{
 	    //this is a followup, so only need to do the simple version
-	    receiveBigTextMessage(packet);
+	    return receiveBigTextMessage(packet);
+	}
+	else
+	{
+	    //this is the first packet so make a new message
+	    currentMessage = new textMessage();
 	}
 	
 	//now say there is more to come until we find the 0x00 end-of-message indicator
@@ -760,17 +768,61 @@ public class ClientConnection {
 	//ignored for now :D
 	
 	//populate our pretty message structure
-	currentMessage = new textMessage();
+	//the sender's name
+	for (int i = 30; i < (data[29] + 30); i++) //step throug hthe length of the name above the offset
+	{
+	    currentMessage.senderName = currentMessage.senderName + (char)data[i];
+	}
 	
-	currentMessage.msg = "";
-	currentMessage.senderName = "";
-		
-        if(DEBUG){System.out.println(currentMessage.msg);}
+	
+	//the actual message
+	for (int i = 0x3b; i < data.length; i++)
+	{
+	    if (data[i] == 0x00) //null char - end of message
+	    {
+		currentMessage.isMore = false; //this is the only packet
+		break; //don't do any more
+	    }
+	    currentMessage.msg = currentMessage.msg + (char)data[i];
+	}	
+	
+	if (currentMessage.isMore)
+	{
+	    return serverPacketType.INCOMPLETE_MESSAGE;
+	}
+	else
+	{
+	    return serverPacketType.TEXT_MESSAGE;
+	}
     }
     
-    private void receiveBigTextMessage(DatagramPacket packet)
+    private serverPacketType receiveBigTextMessage(DatagramPacket packet)
     {
-	if(DEBUG){System.out.println("Continuation text message packet.");}
+	//now say there is more to come until we find the 0x00 end-of-message indicator
+	currentMessage.isMore = true;
+	
+	//get the data
+	byte[] data = packet.getData();
+	
+	//the actual message
+	for (int i = 0x18; i < data.length; i++)
+	{
+	    if (data[i] == 0x00) //null char - end of message
+	    {
+		currentMessage.isMore = false; //this is the only packet
+		break; //don't do any more
+	    }
+	    currentMessage.msg = currentMessage.msg + (char)data[i];
+	}
+
+	if (currentMessage.isMore)
+	{
+	    return serverPacketType.INCOMPLETE_MESSAGE;
+	}
+	else
+	{
+	    return serverPacketType.TEXT_MESSAGE;
+	}
     }
     
     public void sendChatMessage(String msg, int id)
