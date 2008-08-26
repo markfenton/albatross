@@ -39,7 +39,8 @@ public class Main {
      */
     public static void main(String[] args) {
         // TODO code application logic here
-        
+	
+        //run test
         connectionTest();
         
     }
@@ -48,6 +49,9 @@ public class Main {
     {
         a_connection = new ClientConnection("ts.deadcodeelimination.com",8767,"","lionftw","Albatross");
         
+	//register interface
+	TestInterface bob = new TestInterface(a_connection);
+	
        if(!a_connection.connect())//should really timeout this
        {
 	   System.err.println("Failed to connect");

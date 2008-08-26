@@ -984,7 +984,11 @@ public class ClientConnection {
     {
         UDPSocket.disconnect();
     }
-    
+
+    public void registerInterface(ClientInterface client)
+    {
+	clientInterface = client;
+    }
 
 
     /* GET/SETS */

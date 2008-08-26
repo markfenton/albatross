@@ -15,7 +15,7 @@
 package tspeaklibtest;
 
 /**
- *
+ * A simple text based interface example to the backend library
  * @author markf
  */
 
@@ -23,10 +23,15 @@ import TSpeakLib.*;
 
 
 public class TestInterface implements TSpeakLib.ClientInterface {
+    
+    public TestInterface(ClientConnection connection)
+    {
+	connection.registerInterface(this);
+    }
 
     public void textMessageReceived(ClientConnection.textMessage message)
     {
-	System.out.println(message.msg);
+	System.out.println(message.senderName + ": " + message.msg);
 	return;
     }
 }
