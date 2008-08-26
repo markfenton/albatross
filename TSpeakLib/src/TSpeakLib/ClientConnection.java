@@ -71,11 +71,11 @@ public class ClientConnection {
     boolean connected = false;
 
     //text messages
-    class textMessage 
+    public class textMessage 
     {
-	String msg = "";
-	String senderName = "";
-	boolean isMore = false; //default to false - complicated why! First packet assumed to be start of long message, so this is set to true as soon as we start handling, but first packet will not be the continuation. Or something.
+	public String msg = "";
+	public String senderName = "";
+	public boolean isMore = false; //default to false - complicated why! First packet assumed to be start of long message, so this is set to true as soon as we start handling, but first packet will not be the continuation. Or something.
     }
     
     textMessage currentMessage = new textMessage();
@@ -89,6 +89,9 @@ public class ClientConnection {
     SpeexDecoder speexDecoder;
     SpeexEncoder speexEncoder;
     final int OUTPUT_SAMPLE_RATE = 16000; //speex says this should be 8000 but that runs at 50% speed (no idea why). This works so we keep it.
+    
+    //callback interface
+    private ClientInterface clientInterface;
     
     public ClientConnection(String serverAddress, int port, String username, String password, String alias)
     {
@@ -442,6 +445,7 @@ public class ClientConnection {
 		case CHAT_MESSAGE:
 		    //need to notify the app that there is a new message
 		    if(DEBUG){System.out.println(currentMessage.senderName + ": " + currentMessage.msg);}
+		    clientInterface.textMessageReceived(currentMessage);
 		    break;
 		case INCOMPLETE_MESSAGE:
 		    //don't want return incomplete messages
