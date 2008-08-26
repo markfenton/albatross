@@ -238,33 +238,33 @@ public class ClientConnection {
         try
         {   
             //This is a generic header thing
-            byte[] header = hexStringToByteArray("f4be0300000000000000000001000000");
+            byte[] header = AlbatrossUtils.hexStringToByteArray("f4be0300000000000000000001000000");
             
             //Spacer for a CRC check
-            byte[] crc = hexStringToByteArray("00000000");
+            byte[] crc = AlbatrossUtils.hexStringToByteArray("00000000");
             
             //This says Teamspeak and then an OS Type (Windows NT atm), both prefixed with string lengths
-            byte[] body = hexStringToByteArray("095465616d537065616b00000000000000000000000000000000000000000a57696e646f7773204e54000000000000000000000000000000000000000200000020003c0001");
+            byte[] body = AlbatrossUtils.hexStringToByteArray("095465616d537065616b00000000000000000000000000000000000000000a57696e646f7773204e54000000000000000000000000000000000000000200000020003c0001");
             
             //needs to be changeable but for now go with unregistered
-            byte[] registered = hexStringToByteArray("01");
+            byte[] registered = AlbatrossUtils.hexStringToByteArray("01");
             
-            byte[] login = packByteArray(loginName.getBytes(),29,(byte)0x00);
+            byte[] login = AlbatrossUtils.packByteArray(loginName.getBytes(),29,(byte)0x00);
             byte[] loginLength = {(byte)loginName.length()};
-            byte[] password = packByteArray(loginPassword.getBytes(),29,(byte)0x00);
+            byte[] password = AlbatrossUtils.packByteArray(loginPassword.getBytes(),29,(byte)0x00);
             byte[] passwordLength = {(byte)loginPassword.length()};
-            byte[] alias = packByteArray(aliasName.getBytes(),29,(byte)0x00);
+            byte[] alias = AlbatrossUtils.packByteArray(aliasName.getBytes(),29,(byte)0x00);
             byte[] aliasLength = {(byte)aliasName.length()};
             
             byte[][] messageArray = {header,crc,body,registered,loginLength,login,passwordLength,password,aliasLength,alias};
             
-            byte[] message = byteArrayConcat(messageArray);
+            byte[] message = AlbatrossUtils.byteArrayConcat(messageArray);
 
-            crc = hexStringToByteArray(crc32(message));
+            crc = AlbatrossUtils.hexStringToByteArray(AlbatrossUtils.crc32(message));
             
             //now redo WITH the crc
             byte[][] messageArray2 = {header,crc,body,registered,loginLength,login,passwordLength,password,aliasLength,alias};
-            message = byteArrayConcat(messageArray2);
+            message = AlbatrossUtils.byteArrayConcat(messageArray2);
             
             DatagramPacket packet = new DatagramPacket(message, message.length,address, port);
 
@@ -281,34 +281,34 @@ public class ClientConnection {
         try
         {
             //this seems to increment, but other that that more generic header fun
-            byte[] headerpart1 = hexStringToByteArray("F0BE0500");
-            byte[] headerpart2 = hexStringToByteArray("00000000");
+            byte[] headerpart1 = AlbatrossUtils.hexStringToByteArray("F0BE0500");
+            byte[] headerpart2 = AlbatrossUtils.hexStringToByteArray("00000000");
             //more padding too
-            byte[] crc = hexStringToByteArray("00000000");
+            byte[] crc = AlbatrossUtils.hexStringToByteArray("00000000");
        
-            byte[] channelName = packByteArray(channelNameStr.getBytes(),29,(byte)0x00);
+            byte[] channelName = AlbatrossUtils.packByteArray(channelNameStr.getBytes(),29,(byte)0x00);
             byte[] nameLength = {(byte)channelNameStr.length()};
-            byte[] subChannelName = packByteArray(subChannelNameStr.getBytes(),29,(byte)0x00);
+            byte[] subChannelName = AlbatrossUtils.packByteArray(subChannelNameStr.getBytes(),29,(byte)0x00);
             byte[] subChannelLength = {(byte)subChannelNameStr.length()};
-            byte[] channelPassword = packByteArray(channelPasswordStr.getBytes(),25,(byte)0x00);
+            byte[] channelPassword = AlbatrossUtils.packByteArray(channelPasswordStr.getBytes(),25,(byte)0x00);
             byte[] passwordLength = {(byte)channelPasswordStr.length()};
             
             
-            byte[] bodypart1 = hexStringToByteArray("0100");
+            byte[] bodypart1 = AlbatrossUtils.hexStringToByteArray("0100");
                     
-            byte[] tail = hexStringToByteArray("00000000");
+            byte[] tail = AlbatrossUtils.hexStringToByteArray("00000000");
             
-            byte[] cmdCounterBytes = intToByteArray(cmdCounter);
+            byte[] cmdCounterBytes = AlbatrossUtils.intToByteArray(cmdCounter);
             
             byte[][] messageArray = {headerpart1,serverChunkB,cmdCounterBytes,headerpart2,crc,bodypart1,nameLength,channelName,passwordLength,channelPassword,subChannelLength,subChannelName,serverCrc,tail};
             
-            byte[] message = byteArrayConcat(messageArray);
+            byte[] message = AlbatrossUtils.byteArrayConcat(messageArray);
 
-            crc = hexStringToByteArray(crc32(message));
+            crc = AlbatrossUtils.hexStringToByteArray(AlbatrossUtils.crc32(message));
             
             //now redo WITH the crc
             byte[][] messageArray2 = {headerpart1,serverChunkB,cmdCounterBytes,headerpart2,crc,bodypart1,nameLength,channelName,subChannelLength,subChannelName,passwordLength,channelPassword,serverCrc,tail};
-            message = byteArrayConcat(messageArray2);
+            message = AlbatrossUtils.byteArrayConcat(messageArray2);
             
             DatagramPacket packet = new DatagramPacket(message, message.length,address, port);
             
@@ -377,10 +377,10 @@ public class ClientConnection {
     {
         try
         {
-            byte[] headerpart1 = hexStringToByteArray("f1be0000");
+            byte[] headerpart1 = AlbatrossUtils.hexStringToByteArray("f1be0000");
             byte[] acknum = {serverPacket.getData()[0x0c],serverPacket.getData()[0x0d],serverPacket.getData()[0x0e],serverPacket.getData()[0x0f]};
             byte[][] message1 = {headerpart1,serverChunkB,acknum};
-            byte[] message = byteArrayConcat(message1);
+            byte[] message = AlbatrossUtils.byteArrayConcat(message1);
 
             DatagramPacket packet = new DatagramPacket(message, message.length,address,port);
             UDPSocket.send(packet);
@@ -475,7 +475,7 @@ public class ClientConnection {
         
         byte[] headerByte = {message[3],message[2],message[1],message[0]};
         
-        Integer serverheader = byteArrayToInt(headerByte,0);
+        Integer serverheader = AlbatrossUtils.byteArrayToInt(headerByte,0);
         
         packetType = serverPacketType.UNHANDLED_PACKET; //for all the ones we haven't handled yet
 
@@ -660,15 +660,15 @@ public class ClientConnection {
     {
        try
         {
-            byte[] header = hexStringToByteArray("f4be0100");
-            byte[] tail = hexStringToByteArray("");
-            byte[][] message1 = {header,serverChunkB,intToByteArray(pingCount),tail};
-            byte[] message = byteArrayConcat(message1);
+            byte[] header = AlbatrossUtils.hexStringToByteArray("f4be0100");
+            byte[] tail = AlbatrossUtils.hexStringToByteArray("");
+            byte[][] message1 = {header,serverChunkB,AlbatrossUtils.intToByteArray(pingCount),tail};
+            byte[] message = AlbatrossUtils.byteArrayConcat(message1);
             
-            byte[] crc = hexStringToByteArray(crc32(message));
+            byte[] crc = AlbatrossUtils.hexStringToByteArray(AlbatrossUtils.crc32(message));
             //now redo WITH the crc
-            byte[][] message2 = {header,serverChunkB,intToByteArray(pingCount),tail,crc};
-            message = byteArrayConcat(message2);
+            byte[][] message2 = {header,serverChunkB,AlbatrossUtils.intToByteArray(pingCount),tail,crc};
+            message = AlbatrossUtils.byteArrayConcat(message2);
             
             DatagramPacket packet = new DatagramPacket(message, message.length,address,port);
             UDPSocket.send(packet);
@@ -693,7 +693,7 @@ public class ClientConnection {
             
             //now store bits and bobs
             byte[] pingcount = {data[0xc],data[0xd],data[0xe], data[0xf]};
-            pingCount = byteArrayToInt(pingcount,0);
+            pingCount = AlbatrossUtils.byteArrayToInt(pingcount,0);
             
             //update last seen time
             lastServerData = System.currentTimeMillis();
@@ -712,24 +712,24 @@ public class ClientConnection {
     {
         try
         {
-            byte[] header = hexStringToByteArray("f0beae01");
-            byte[] crc = hexStringToByteArray("00000000");
-            byte[] pad = hexStringToByteArray("00000000");
-            byte[] tail = hexStringToByteArray("0000000002");
-            byte[] end = hexStringToByteArray("00");
+            byte[] header = AlbatrossUtils.hexStringToByteArray("f0beae01");
+            byte[] crc = AlbatrossUtils.hexStringToByteArray("00000000");
+            byte[] pad = AlbatrossUtils.hexStringToByteArray("00000000");
+            byte[] tail = AlbatrossUtils.hexStringToByteArray("0000000002");
+            byte[] end = AlbatrossUtils.hexStringToByteArray("00");
             
-            byte[] idOut = intToByteArray(id);
-            byte[] cmdCounterBytes = intToByteArray(cmdCounter);
+            byte[] idOut = AlbatrossUtils.intToByteArray(id);
+            byte[] cmdCounterBytes = AlbatrossUtils.intToByteArray(cmdCounter);
             
             byte[][] message = {header,serverChunkB,cmdCounterBytes,pad,crc,tail,idOut,msg.getBytes(),end};
             
             cmdCounter++;
             
-            byte[] messageOut = byteArrayConcat(message);
-            crc = hexStringToByteArray(crc32(messageOut));
+            byte[] messageOut = AlbatrossUtils.byteArrayConcat(message);
+            crc = AlbatrossUtils.hexStringToByteArray(AlbatrossUtils.crc32(messageOut));
             //now redo WITH the crc
             byte[][] message2 = {header,serverChunkB,cmdCounterBytes,pad,crc,tail,idOut,msg.getBytes(),end};
-            byte[] message2Out = byteArrayConcat(message2);
+            byte[] message2Out = AlbatrossUtils.byteArrayConcat(message2);
             
             DatagramPacket packet = new DatagramPacket(message2Out, message2Out.length,address,port);
             UDPSocket.send(packet);
@@ -830,24 +830,24 @@ public class ClientConnection {
         //identical to text message except tail ends in 1 afaik
         try
         {
-            byte[] header = hexStringToByteArray("f0beae01");
-            byte[] crc = hexStringToByteArray("00000000");
-            byte[] pad = hexStringToByteArray("00000000");
-            byte[] tail = hexStringToByteArray("0000000001");
-            byte[] end = hexStringToByteArray("00");
+            byte[] header = AlbatrossUtils.hexStringToByteArray("f0beae01");
+            byte[] crc = AlbatrossUtils.hexStringToByteArray("00000000");
+            byte[] pad = AlbatrossUtils.hexStringToByteArray("00000000");
+            byte[] tail = AlbatrossUtils.hexStringToByteArray("0000000001");
+            byte[] end = AlbatrossUtils.hexStringToByteArray("00");
             
-            byte[] idOut = intToByteArray(id);
-            byte[] cmdCounterBytes = intToByteArray(cmdCounter);
+            byte[] idOut = AlbatrossUtils.intToByteArray(id);
+            byte[] cmdCounterBytes = AlbatrossUtils.intToByteArray(cmdCounter);
             
             byte[][] message = {header,serverChunkB,cmdCounterBytes,pad,crc,tail,idOut,msg.getBytes(),end};
             
             cmdCounter++;
             
-            byte[] messageOut = byteArrayConcat(message);
-            crc = hexStringToByteArray(crc32(messageOut));
+            byte[] messageOut = AlbatrossUtils.byteArrayConcat(message);
+            crc = AlbatrossUtils.hexStringToByteArray(AlbatrossUtils.crc32(messageOut));
             //now redo WITH the crc
             byte[][] message2 = {header,serverChunkB,cmdCounterBytes,pad,crc,tail,idOut,msg.getBytes(),end};
-            byte[] message2Out = byteArrayConcat(message2);
+            byte[] message2Out = AlbatrossUtils.byteArrayConcat(message2);
             
             DatagramPacket packet = new DatagramPacket(message2Out, message2Out.length,address,port);
             UDPSocket.send(packet);
@@ -951,17 +951,17 @@ public class ClientConnection {
     {
 	try
 	{
-	    byte header[] = hexStringToByteArray("f2be000c"); //LibTBB uses 09 as last byte, TS uses 0c
-	    byte header2[] = hexStringToByteArray("00000000");
-	    byte tail[] = hexStringToByteArray("0000000001");
+	    byte header[] = AlbatrossUtils.hexStringToByteArray("f2be000c"); //LibTBB uses 09 as last byte, TS uses 0c
+	    byte header2[] = AlbatrossUtils.hexStringToByteArray("00000000");
+	    byte tail[] = AlbatrossUtils.hexStringToByteArray("0000000001");
 	    byte[] pBuffer;
-	    byte[] crc = hexStringToByteArray("00000000");
-	    byte[] midsection = hexStringToByteArray("260005"); //LibTBB uses 001005, TS uses 260005
+	    byte[] crc = AlbatrossUtils.hexStringToByteArray("00000000");
+	    byte[] midsection = AlbatrossUtils.hexStringToByteArray("260005"); //LibTBB uses 001005, TS uses 260005
 
 
 	    //nb nasty hack using intToByte2Array (special version!) as the voiceSendCount needs to be 2 bytes)
-	    byte[][] messageBuffer = {header,serverChunkB, intToByte2Array(voiceSendCount),midsection,data};
-	    pBuffer = byteArrayConcat(messageBuffer);
+	    byte[][] messageBuffer = {header,serverChunkB, AlbatrossUtils.intToByte2Array(voiceSendCount),midsection,data};
+	    pBuffer = AlbatrossUtils.byteArrayConcat(messageBuffer);
 
 	    /* Oddly the TBB code doesn't use tail, head2 or crc after defining them all */
 
@@ -981,134 +981,7 @@ public class ClientConnection {
         UDPSocket.disconnect();
     }
     
-    /*UTILITY FUNCTIONS*/
-    /* These are all private as they will be played with lots knowing me*/ 
-    
-    private static byte[] hexStringToByteArray(String hex)
-    {        
-        //http://forum.java.sun.com/thread.jspa?threadID=546486
-        byte[] bts = new byte[hex.length() / 2];
-        
-        String subStr;
-        int parsedInt = 0;
-        
-        for (int i = 0; i < bts.length; i++) 
-        {
-            subStr = hex.substring(2*i, 2*i+2);
-            parsedInt = Integer.parseInt(subStr, 16);
-            
-            bts[i] = (byte) parsedInt;
-        }
-        
-        return bts;
-    }
-    
-    private static byte[] byteArrayConcat(byte[][] inArray)
-    {
-        byte[] totalArray;
-        
-        int arraySize = 0;
-        
-        for (int i = 0; i < inArray.length; i++)
-        {
-            arraySize += inArray[i].length;
-        }
-        
-        int offset = 0;
-        totalArray = new byte[arraySize];
-        
-        for (int i = 0; i < inArray.length; i++)
-        {
-            System.arraycopy(inArray[i],0,totalArray,offset,inArray[i].length);
-            offset += inArray[i].length;
-        }
-        
-        return totalArray;
-    }
-    
-    private static String crc32(byte[] bytes)
-    {
-        java.util.zip.CRC32 x = new java.util.zip.CRC32();
-        x.update(bytes);
-        
-        //java CRC is reversed (byte order) for what TS needs. SO....
-        String crcString = Long.toHexString(x.getValue());
-        
-        //pad with leading 0s
-        if (crcString.length() % 2 != 0)
-        {
-            crcString = "0" + crcString;
-        }
-        
-        //reverse in pairs so bytes are in opposite order
-        String reverseCrcString = crcString.substring(6,8) + crcString.substring(4,6) + crcString.substring(2,4) + crcString.substring(0,2);
-        
-        return reverseCrcString;
-    }
-    
-    private static byte[] packByteArray(byte[] originalArray, int requiredSize, byte packing)
-    {
-        
-        byte[] outArray = new byte[requiredSize];
-        
-        if (originalArray.length > requiredSize)
-        {
-            for (int i = 0; i < requiredSize; i++)
-            {
-                outArray[i] = originalArray[i];
-            }
-        }
-        else
-        {
-            for (int i = 0; i < originalArray.length; i++)
-            {
-                outArray[i] = originalArray[i];
-            }
-            
-            for (int i = originalArray.length; i < requiredSize; i++)
-            {
-                outArray[i] = packing;
-            }
-        }
-        
-        return outArray;
-    }
-    
-    private static byte[] intToByteArray(int x)
-    {
-        byte[] buf = new byte[4];
-        buf[3]=(byte)((x & 0xff000000)>>>24);
-        buf[2]=(byte)((x & 0x00ff0000)>>>16);
-        buf[1]=(byte)((x & 0x0000ff00)>>>8);
-        buf[0]=(byte)((x & 0x000000ff));
-        
-        return buf;
-    }
-    
-    //this is lazy of me but I don't want to write a proper one!
-    private static byte[] intToByte2Array(int x)
-    {
-        byte[] buf = new byte[2];
-        buf[1]=(byte)((x & 0x0000ff00)>>>8);
-        buf[0]=(byte)((x & 0x000000ff));
-        
-        return buf;
-    }
-    /**
-     * Convert the byte array to an int starting from the given offset.
-     *
-     * @param b The byte array
-     * @param offset The array offset
-     * @return The integer
-     */
-    private static int byteArrayToInt(byte[] b, int offset) {
-        int value = 0;
-        for (int i = 0; i < 4; i++) {
-            int shift = (4 - 1 - i) * 8;
-            value += (b[i + offset] & 0x000000FF) << shift;
-        }
-        return value;
-    }
+
 
     /* GET/SETS */
     
