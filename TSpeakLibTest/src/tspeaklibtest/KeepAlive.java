@@ -67,22 +67,25 @@ ClientConnection theConnection;
 	   //Random generator = new Random();
 	   //generator.nextBytes(data);
 	    
-	   theConnection.lineIn.read(data, 0, 640);
+	    theConnection.lineIn.read(data, 0, 640);
 	    
 	    byte encData[] = new byte[160];
 	    
 	    theConnection.encodeSpeexAudioPacket(data,encData);
 	    
-	    //theConnection.sendAudioPacket(encData);
+            //generator.nextBytes(encData);
+
+	    theConnection.sendAudioPacket(encData);
 	    
 	    if(DEBUG)
 	    {
 		System.out.println("Sending Audio Packet...");
+                //System.out.println(encData);
 	    }
 	    
 	    try
 	    {
-		//this.sleep(100L);
+		this.sleep(100L);
 	    }
 	     catch (Exception e) 
 	    {

@@ -172,7 +172,7 @@ public class ClientConnection {
 	    
 	    
 	    //this is all the input block
-	    sourceFormat = new AudioFormat(44100.0F, 16, 1,true,false);
+	    sourceFormat = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, OUTPUT_SAMPLE_RATE, 16, 1,2, OUTPUT_SAMPLE_RATE,false);
 
 	    
 	    int mixerIndex = 2;
@@ -933,12 +933,12 @@ public class ClientConnection {
 //	    
 //            for (int i = 0; i < 4; i++)
 //            {
-//		speexDecoder.processData(false);
+//                speexEncoder.processData(false);
 //		//speexDecoder.processData(audioData, i*frame_size, frame_size);
 //            }
 	    int dataSize = speexEncoder.getProcessedDataByteSize();
 	    speexData = new byte[dataSize];	
-	    speexDecoder.getProcessedData(speexData, 0);
+	    speexEncoder.getProcessedData(speexData, 0);
 
 	    return;            
         }
