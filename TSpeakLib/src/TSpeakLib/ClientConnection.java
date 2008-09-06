@@ -26,6 +26,7 @@ import java.net.*;
 import java.math.*;
 import org.xiph.speex.*;
 import javax.sound.sampled.*;
+import org.xiph.speex.spi.*;
 
 public class ClientConnection {
     
@@ -219,8 +220,7 @@ public class ClientConnection {
 			      channels,   //(1=mono, 2=stereo, ...)
 			      );
 	     * */
-	    speexEncoder.init(1,7,OUTPUT_SAMPLE_RATE,1);
-	   
+	    speexEncoder.init(1,7,44100,1);
 	}
 	catch (Exception e) 
         {
@@ -939,6 +939,8 @@ public class ClientConnection {
 	    int dataSize = speexEncoder.getProcessedDataByteSize();
 	    speexData = new byte[dataSize];	
 	    speexEncoder.getProcessedData(speexData, 0);
+
+            if(DEBUG){System.out.println("Encoded audio size: " + dataSize);}
 
 	    return;            
         }
