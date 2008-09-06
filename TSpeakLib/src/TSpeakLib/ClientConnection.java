@@ -25,8 +25,7 @@ import java.io.*;
 import java.net.*;
 import java.math.*;
 import org.xiph.speex.*;
-import javax.sound.sampled.*;
-import org.xiph.speex.spi.*;
+import java.util.*;
 
 public class ClientConnection {
     
@@ -57,6 +56,14 @@ public class ClientConnection {
     int pingCount = 0;
     int voiceSendCount = 0;
     
+    //Audio buffers
+    public List inputAudioBuffer = Collections.synchronizedList(new ArrayList()); //lovely pcm audio from the client
+    public List outputAudioBuffer = Collections.synchronizedList(new ArrayList()); //lovely pcm audio going out to the client
+
+    //speex
+    SpeexDecoder speexDecoder;
+    SpeexEncoder speexEncoder;
+    
     //types of server packet we can recieve:
     public enum serverPacketType {GENERIC_ERROR,UNKNOWN_PACKET,UNHANDLED_PACKET,CONNECTION_REPLY_1,OTHER_KNOWN,
 							PING_REPLY,
@@ -81,16 +88,6 @@ public class ClientConnection {
     
     textMessage currentMessage = new textMessage();
     
-    //audio crap
-    SourceDataLine line;
-    public TargetDataLine lineIn; //only public for testing!
-    AudioFormat targetFormat;  
-    AudioFormat sourceFormat;  
-    
-    SpeexDecoder speexDecoder;
-    SpeexEncoder speexEncoder;
-    final int OUTPUT_SAMPLE_RATE = 16000; //speex says this should be 8000 but that runs at 50% speed (no idea why). This works so we keep it.
-    
     //callback interface
     private ClientInterface clientInterface;
     
@@ -108,7 +105,7 @@ public class ClientConnection {
 	    this.globalPassword = password;
 	    this.globalAlias = alias;
 	  
-	    initialiseAudio();
+	    initialiseAudioEncoding();
         }
         catch (Exception e) 
         {
@@ -116,117 +113,34 @@ public class ClientConnection {
         }
     }
     
-    private void initialiseAudio()
+    private void initialiseAudioEncoding()
     {
-	try
-	{
-	    //this is all the output block
-	    targetFormat = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, OUTPUT_SAMPLE_RATE, 16, 1,2, OUTPUT_SAMPLE_RATE,false);
+        final int OUTPUT_SAMPLE_RATE = 16000; //speex says this should be 8000 but that runs at 50% speed (no idea why). This works so we keep it.
+        
+        //speex decoder
+        speexDecoder = new SpeexDecoder();
+        /*
+         * speexDecoder.init(mode,       //   mode - (0=NB, 1=WB, 2=UWB)
+                          sampleRate, //the number of samples per second.
+                          channels,   //(1=mono, 2=stereo, ...)
+                          enhanced    // perceptual enhancement
+                          );
+         * */
+        speexDecoder.init(1, OUTPUT_SAMPLE_RATE,1, true);
 
-	    SourceDataLine.Info info = new DataLine.Info(SourceDataLine.class,targetFormat); // format is an AudioFormat object
-	    if (!AudioSystem.isLineSupported(info)) {
-		System.err.println("Audio output type not supported.");
-	    }
-
-	    line = (SourceDataLine) AudioSystem.getLine(info);
-	    line.open(targetFormat);
-	    line.start();
-
-	    speexDecoder = new SpeexDecoder();
-	    /*
-	     * speexDecoder.init(mode,       //   mode - (0=NB, 1=WB, 2=UWB)
-			      sampleRate, //the number of samples per second.
-			      channels,   //(1=mono, 2=stereo, ...)
-			      enhanced    // perceptual enhancement
-			      );
-	     * */
-	    speexDecoder.init(1, OUTPUT_SAMPLE_RATE,1, true);
-	}
-	catch (Exception e) 
-        {
-            System.err.println("Error initialising audio output: " + e);
-        }
-	
-	try
-	{
-	    //Audio input time!
-	    //list all system mixers
-	    if(DEBUG){System.out.println("System Mixers Available: ");}
-	    Mixer.Info[]	aInfos = AudioSystem.getMixerInfo();
-	    for (int i = 0; i < aInfos.length; i++)
-	    {
-		if(DEBUG)
-		{
-		    
-		    System.out.println(aInfos[i].getName() + aInfos[i].getDescription());
-		}
-		
-	    }
-	    
-	    //now get all the mixers
-	    Mixer[] aMixer = new Mixer[aInfos.length];
-	    for (int i = 0; i < aInfos.length; i++)
-	    {
-		    aMixer[i] = AudioSystem.getMixer(aInfos[i]);
-	    }
-
-	    
-	    
-	    //this is all the input block
-	    sourceFormat = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, OUTPUT_SAMPLE_RATE, 16, 1,2, OUTPUT_SAMPLE_RATE,false);
-
-	    
-	    int mixerIndex = 2;
-	    Mixer.Info ourMixerInfo = aInfos[mixerIndex]; //this is the mixer we will actually use. Is hardcoded for my test system at present.
-	    Mixer ourMixer = aMixer[mixerIndex];
-	    
-	    //list all mixer lines
-	    if(DEBUG){System.out.println("Mixer Lines Available: ");}
-	    Line.Info[] lineInfos = ourMixer.getTargetLineInfo();
-	    for (int i = 0; i < lineInfos.length; i++)
-	    {
-		if(DEBUG)
-		{
-		    System.out.println(lineInfos[i]);
-		}
-	    }
-	    
-	    //now need a line from this
-	    //Line.Info lineInfo = lineInfos[0]; //this is the mixer line we will use for input. more nasty hardcoding so we use the first one.
-	    DataLine.Info lineInfo = new DataLine.Info(TargetDataLine.class,sourceFormat); //this is a test bodge as we don't know what we will get...
-	    
-	    
-	    //now test and get the line.
-	    if (!ourMixer.isLineSupported(lineInfo)) {
-		System.err.println("Audio input type not supported.");
-	    }
-
-	    
-
-	    
-	    lineIn = (TargetDataLine) ourMixer.getLine(lineInfo);
-	   
-	    if(DEBUG){System.out.println("Input line used:" + lineIn);}
-
-	    lineIn.open(sourceFormat);
-	    lineIn.start();
-	    
-	    //encoder
-	    speexEncoder = new SpeexEncoder();
-	    /*
-	     * speexEncoder.init(mode,       //   mode - (0=NB, 1=WB, 2=UWB)
-	     *		      quality, //encoding quality (0-9?)
-			      sampleRate, //the number of samples per second.
-			      channels,   //(1=mono, 2=stereo, ...)
-			      );
-	     * */
-	    speexEncoder.init(1,7,44100,1);
-	}
-	catch (Exception e) 
-        {
-            System.err.println("Error initialising audio input: " + e);
-        }
+        //speex encoder
+        speexEncoder = new SpeexEncoder();
+        /*
+         * speexEncoder.init(mode,       //   mode - (0=NB, 1=WB, 2=UWB)
+         *		      quality, //encoding quality (0-9?)
+                          sampleRate, //the number of samples per second.
+                          channels,   //(1=mono, 2=stereo, ...)
+                          );
+         * */
+        speexEncoder.init(1,7,44100,1);
+        
     }
+    
     
     public boolean connect()
     {
@@ -898,14 +812,11 @@ public class ClientConnection {
 	    int dataSize = speexDecoder.getProcessedDataByteSize();
 	    decoded = new byte[dataSize];	
 	    speexDecoder.getProcessedData(decoded, 0);
-	    line.write(decoded, 0, dataSize);
-
-//	    for (int x = 0; x < dataSize; x++)
-//	    {
-//		System.out.println((int)decoded[x]);		
-//	    }
-	   // System.exit(0);
-	//    line.write(audioData,0,1000);
+	    
+            //write data into the output buffer and notify the client app
+            outputAudioBuffer.add(decoded);
+            
+            clientInterface.audioDataReceived();
             
         }
         catch (Exception e) 
@@ -916,18 +827,16 @@ public class ClientConnection {
         }
     }
     
-    /* Since we send 160 bytes (4 speex frames?) It would be a good idea to pass that much wav data ;)
-     * Easiest thing is to encode all the data we're given and let the caller split it methinks
+    /* Encodes pcm data to speex and sends it to the server.
      */
-    public void encodeSpeexAudioPacket(byte[] audio, byte[] speexData)
+    public void encodeSpeexAudioPacket(byte[] audio)
     {    
         try
         {    	    
 	    int frame_size = 160;
 	    
 	    
-	    
-	    byte[] encoded = new byte[frame_size];
+	    byte[] speexData;
 	    
 	    speexEncoder.processData(audio, 0, audio.length);
 //	    
@@ -939,6 +848,8 @@ public class ClientConnection {
 	    int dataSize = speexEncoder.getProcessedDataByteSize();
 	    speexData = new byte[dataSize];	
 	    speexEncoder.getProcessedData(speexData, 0);
+            
+            // now send the data
 
             if(DEBUG){System.out.println("Encoded audio size: " + dataSize);}
 

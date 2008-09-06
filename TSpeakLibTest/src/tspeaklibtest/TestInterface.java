@@ -34,4 +34,9 @@ public class TestInterface implements TSpeakLib.ClientInterface {
 	System.out.println(message.senderName + ": " + message.msg);
 	return;
     }
+
+    public void audioDataReceived()
+    {
+        
+    }
 }

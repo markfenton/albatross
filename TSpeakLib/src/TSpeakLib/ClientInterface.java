@@ -22,4 +22,8 @@ public interface ClientInterface
 {
     //text message received
     public void textMessageReceived(ClientConnection.textMessage message);
+
+    //audio data from server is in the buffer
+    public void audioDataReceived();
+
 }

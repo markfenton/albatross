@@ -67,15 +67,16 @@ ClientConnection theConnection;
 	   //Random generator = new Random();
 	   //generator.nextBytes(data);
 	    
-	    theConnection.lineIn.read(data, 0, 640);
+	    //theConnection.lineIn.read(data, 0, 640);
 	    
 	    byte encData[] = new byte[160];
 	    
-	    theConnection.encodeSpeexAudioPacket(data,encData);
+	    theConnection.encodeSpeexAudioPacket(data);
 	    
             //generator.nextBytes(encData);
 
-	    theConnection.sendAudioPacket(encData);
+            //got rid of this - now sends however much we encode automatically
+	    //theConnection.sendAudioPacket(encData);
 	    
 	    if(DEBUG)
 	    {
